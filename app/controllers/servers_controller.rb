@@ -1,5 +1,6 @@
 class ServersController < ApplicationController
   before_action :set_server, only: [:show, :edit, :update, :destroy]
+  before_action :authorise
 
   # GET /servers
   # GET /servers.json
@@ -25,6 +26,7 @@ class ServersController < ApplicationController
   # POST /servers.json
   def create
     @server = Server.new(server_params)
+    @server.session_id = request.session.id
 
     respond_to do |format|
       if @server.save
@@ -62,6 +64,18 @@ class ServersController < ApplicationController
   end
 
   private
+
+    def authorise
+      # Allow only creating of Server if user hasn't created one yet
+      if ['new', 'create'].include? action_name
+        render_forbidden if Server.exists?(session_id: request.session.id)
+      end
+      # Allow only updating of Server if user is the one who created it
+      if ['edit', 'update', 'destroy'].include? action_name
+        render_forbidden if @server.session_id != request.session.id
+      end
+    end
+
     # Use callbacks to share common setup or constraints between actions.
     def set_server
       @server = Server.find(params[:id])
